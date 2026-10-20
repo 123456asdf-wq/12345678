@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✨BL磕点终极XP测试（分步答题版｜支持多选）</title>
+<style>
+  :root{
+    --bg-top:#fff5fb;
+    --bg-bottom:#f6f0ff;
+    --accent:#d88fc9;
+    --accent-deep:#b886db;
+    --ink:#3b2d52;
+    --ink-soft:#4a3a5c;
+    --ink-mute:#8a7a9e;
+    --card-shadow:0 10px 30px rgba(184,80,160,.12);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+    background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-bottom) 100%);
+    color:var(--ink-soft);
+    line-height:1.6;
+    min-height:100vh;
+  }
+
+  /* ===== 视图容器（一次只显示一个，淡入淡出切换） ===== */
+  .view{
+    position:fixed;
+    inset:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .45s ease,visibility 0s linear .45s;
+  }
+  .view.active{
+    opacity:1;
+    visibility:visible;
+    transition:opacity .45s ease;
+  }
+  .view-inner{
+    max-width:680px;
+    margin:0 auto;
+    padding:28px 18px 56px;
+    min-height:100%;
+  }
+
+  /* ===== 封面启动页 ===== */
+  #view-cover{
+    background:radial-gradient(circle at 50% 30%,#ffeaf6 0%,var(--bg-top) 46%,var(--bg-bottom) 100%);
+  }
+  .cover-wrap{
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px 24px;
+  }
+  .cover-glow{
+    width:150px;
+    height:150px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#f6b8e0 0%,#d88fc9 55%,#b886db 100%);
+    opacity:.85;
+    margin-bottom:26px;
+    box-shadow:0 18px 46px rgba(184,80,160,.35);
+    animation:coverFloat 3.6s ease-in-out infinite;
+  }
+  @keyframes coverFloat{
+    0%,100%{ transform:translateY(0) scale(1); }
+    50%{ transform:translateY(-10px) scale(1.04); }
+  }
+  .cover-title{
+    font-size:clamp(30px,8vw,42px);
+    font-weight:800;
+    color:var(--ink);
+    letter-spacing:1px;
+    line-height:1.35;
+    text-shadow:0 4px 18px rgba(216,143,201,.25);
+  }
+  .cover-sub{
+    margin-top:14px;
+    font-size:clamp(16px,4.4vw,19px);
+    font-weight:700;
+    color:var(--accent-deep);
+    letter-spacing:2px;
+  }
+  .cover-note{
+    margin-top:16px;
+    max-width:360px;
+    font-size:14px;
+    color:var(--ink-mute);
+  }
+  .btn-cover{
+    margin-top:36px;
+    min-width:220px;
+  }
+
+  /* ===== 按钮 ===== */
+  .btn{
+    min-height:50px;
+    border:none;
+    border-radius:999px;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+    padding:0 28px;
+    transition:transform .15s ease,box-shadow .2s ease,filter .2s ease;
+  }
+  .btn:hover{ transform:scale(1.03); filter:brightness(1.06); }
+  .btn:active{ transform:scale(.97); }
+  .btn.primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    color:#fff;
+    box-shadow:0 10px 24px rgba(184,80,160,.35);
+  }
+  .btn.ghost{
+    background:#fff;
+    color:var(--accent-deep);
+    border:2px solid #eecfe8;
+  }
+
+  /* ===== 答题页 ===== */
+  .progress-wrap{ margin-bottom:16px; }
+  .progress-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent-deep);
+    margin-bottom:8px;
+  }
+  .progress-track{
+    height:10px;
+    border-radius:999px;
+    background:#f0e2f6;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    width:0;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-deep));
+    transition:width .45s ease;
+  }
+  .q-card{
+    background:#fff;
+    border-radius:16px;
+    padding:20px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:16px;
+  }
+  .q-body{ animation:fadeUp .4s ease; }
+  @keyframes fadeUp{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:none; }
+  }
+  .q-title{
+    font-size:17px;
+    font-weight:700;
+    color:var(--ink);
+    margin-bottom:14px;
+    line-height:1.5;
+  }
+  .q-options{ display:flex; flex-direction:column; gap:4px; }
+
+  .opt{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:13px 14px;
+    border-radius:14px;
+    cursor:pointer;
+    transition:background .18s ease;
+  }
+  .opt:hover{ background:#fdf3fb; }
+  .opt input{
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
+    pointer-events:none;
+  }
+  .box{
+    flex:none;
+    width:22px;
+    height:22px;
+    border-radius:7px;
+    border:2px solid #e3c6e6;
+    background:#fff;
+    position:relative;
+    margin-top:2px;
+    transition:background .18s ease,border-color .18s ease;
+  }
+  .opt input:checked + .box{
+    background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    border-color:transparent;
+  }
+  .opt input:checked + .box::after{
+    content:"";
+    position:absolute;
+    left:6px;
+    top:3px;
+    width:6px;
+    height:10px;
+    border:solid #fff;
+    border-width:0 2px 2px 0;
+    transform:rotate(45deg);
+  }
+  .opt input:focus-visible + .box{
+    box-shadow:0 0 0 3px rgba(216,143,201,.35);
+    outline:none;
+  }
+  .opt:has(input:checked){ background:#fbeef9; }
+  .opt:has(input:checked) .opt-text{ color:#7c3f74; }
+  .opt-text{
+    font-size:14.5px;
+    line-height:1.65;
+    color:var(--ink-soft);
+    transition:color .18s ease;
+  }
+  .opt-letter{ font-weight:700; color:var(--ink); margin-right:5px; }
+  .tag-hint{ color:#bd93c4; }
+
+  .actions{
+    display:flex;
+    gap:12px;
+    margin-top:4px;
+  }
+  .actions .btn{ flex:1; }
+
+  /* ===== 加载过渡页 ===== */
+  #view-loading{ background:linear-gradient(180deg,var(--bg-top) 0%,var(--bg-bottom) 100%); }
+  .loading-wrap{
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px 24px;
+  }
+  .load-orb{
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    animation:loadPulse 1.2s ease-in-out infinite;
+    margin-bottom:26px;
+    box-shadow:0 12px 30px rgba(184,80,160,.35);
+  }
+  @keyframes loadPulse{
+    0%,100%{ transform:scale(1); opacity:.85; }
+    50%{ transform:scale(1.18); opacity:1; }
+  }
+  .load-text{
+    font-size:18px;
+    font-weight:700;
+    color:var(--ink);
+    animation:fadeUp .8s ease .1s both;
+    letter-spacing:1px;
+  }
+
+  /* ===== 结果页 ===== */
+  .result-head{
+    text-align:center;
+    margin:6px 0 22px;
+  }
+  .result-head h2{
+    font-size:clamp(22px,6vw,28px);
+    font-weight:800;
+    color:var(--ink);
+  }
+  .result-head p{
+    margin-top:8px;
+    font-size:14px;
+    color:var(--ink-mute);
+  }
+  .res-card{
+    background:#fff;
+    border-radius:16px;
+    padding:20px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:16px;
+    animation:fadeUp .5s ease both;
+  }
+  .res-card:nth-child(2){ animation-delay:.08s; }
+  .res-card:nth-child(3){ animation-delay:.16s; }
+  .res-badge{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-deep));
+    padding:4px 14px;
+    border-radius:999px;
+    letter-spacing:.5px;
+  }
+  .res-title{
+    font-size:22px;
+    font-weight:800;
+    color:var(--ink);
+    margin:12px 0 8px;
+  }
+  .res-copy{
+    font-size:14.5px;
+    line-height:1.9;
+    color:var(--ink-soft);
+    white-space:pre-line;
+  }
+  .sub-block{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px dashed #eed9f2;
+  }
+  .sub-label{
+    font-size:13px;
+    font-weight:700;
+    color:var(--accent-deep);
+    margin-bottom:10px;
+  }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 12px;
+    border-radius:999px;
+    background:#fbeef9;
+    border:1px solid #f0d4ef;
+    font-size:13px;
+    color:#7c3f74;
+    line-height:1.4;
+  }
+  .chip b{ font-weight:700; margin-right:5px; color:var(--accent-deep); }
+  .result-actions{ margin-top:24px; display:flex; justify-content:center; }
+  .result-actions .btn{ min-width:220px; }
+
+  /* ===== 响应式 ===== */
+  @media (max-width:520px){
+    .view-inner{ padding:20px 14px 48px; }
+    .q-card{ padding:16px; }
+    .opt-text{ font-size:14px; }
+    .actions{ flex-direction:row; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== 视图1：封面启动页 ===== -->
+  <section class="view active" id="view-cover">
+    <div class="cover-wrap">
+      <div class="cover-glow" aria-hidden="true"></div>
+      <h1 class="cover-title">✨BL磕点终极XP测试</h1>
+      <p class="cover-sub">支持多选｜测测你的本命磕点</p>
+      <p class="cover-note">纯娱乐脑洞测试，所有题目都可以多选，不用只选一项！</p>
+      <button type="button" class="btn primary btn-cover" id="startBtn">开始测试</button>
+    </div>
+  </section>
+
+  <!-- ===== 视图2：分步答题页 ===== -->
+  <section class="view" id="view-quiz">
+    <div class="view-inner">
+      <div class="progress-wrap">
+        <div class="progress-top">
+          <span id="progressText">当前第 1 / 12 题</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <div class="q-card" id="qCard"></div>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="prevBtn">上一题</button>
+        <button type="button" class="btn primary" id="nextBtn">下一题</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 视图3：加载过渡页 ===== -->
+  <section class="view" id="view-loading">
+    <div class="loading-wrap">
+      <div class="load-orb" aria-hidden="true"></div>
+      <p class="load-text">正在解析你的XP磕点…</p>
+    </div>
+  </section>
+
+  <!-- ===== 视图4：最终结果展示页 ===== -->
+  <section class="view" id="view-result">
+    <div class="view-inner">
+      <div class="result-head">
+        <h2>✨你的磕点报告出炉啦</h2>
+        <p>本命标签 + 副磕点，一次看个够</p>
+      </div>
+      <div id="resultCards"></div>
+      <div class="result-actions">
+        <button type="button" class="btn primary" id="restartBtn">重新测试</button>
+      </div>
+    </div>
+  </section>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== 全部题目数据 ===== */
+  var QUESTIONS=[
+    { title:'第一眼最戳你的攻是？', opts:[
+      {k:'A',t:'气场强大，掌控感拉满，可靠有占有欲',tag:'强攻'},
+      {k:'B',t:'容貌惊艳，漂亮动人，实力和美貌并存',tag:'美人攻'},
+      {k:'C',t:'年纪更小，乖巧黏人，直球热烈小奶狗',tag:'年下小狗攻'},
+      {k:'D',t:'个子不高，小个子，脾气倔护短，反差感强',tag:'矮攻'},
+      {k:'E',t:'情绪稳定包容，温柔耐心，不强势压迫',tag:'温柔弱攻'},
+      {k:'F',t:'对外冷漠，只对受忠心耿耿，默默守护',tag:'忠犬攻'},
+      {k:'G',t:'偏执疯狂，爱意浓烈危险，眼里只有受',tag:'疯批攻'},
+      {k:'H',t:'占有欲极强，爱吃醋，想把受留在身边',tag:'病娇攻'},
+      {k:'I',t:'表面和善无害，心里全是套路，慢慢拿下受',tag:'腹黑白切黑攻'},
+      {k:'J',t:'嘴甜会撩，爱逗受，满嘴骚话但是专一',tag:'骚攻'},
+      {k:'K',t:'生人勿近的高岭之花，万人追捧，只为一人破防',tag:'高岭之花清冷攻'},
+      {k:'L',t:'前期不懂珍惜伤害受，后期后悔拼命挽回',tag:'渣攻'},
+      {k:'M',t:'身体孱弱单薄，看着易碎，内心坚韧聪明',tag:'病弱攻'},
+      {k:'N',t:'擅长勾人，不主动出击，引诱受主动靠近',tag:'钓系攻'},
+      {k:'O',t:'嘴硬心软，别扭害羞，明明在意不肯说',tag:'傲娇攻'}
+    ]},
+    { title:'哪种受最容易让你心动？', opts:[
+      {k:'a',t:'长相精致绝美，氛围感拉满',tag:'美人受'},
+      {k:'b',t:'外表冷淡独立，只在攻面前卸下防备',tag:'清冷受'},
+      {k:'c',t:'软软糯糯，容易害羞，乖乖的',tag:'奶受'},
+      {k:'d',t:'实力强悍，不服输，很有韧性',tag:'强受'},
+      {k:'e',t:'阅历丰富成熟，年纪更大，会照顾人',tag:'年上受'},
+      {k:'f',t:'气场强大高傲，从容霸气，攻甘愿臣服',tag:'女王受'},
+      {k:'g',t:'自带撩人气质，不经意间勾人心弦',tag:'诱受'},
+      {k:'h',t:'别扭嘴硬，容易炸毛，内心软乎乎',tag:'傲娇受'},
+      {k:'i',t:'看着温和乖巧，心思很深，悄悄拿捏攻',tag:'腹黑受'},
+      {k:'j',t:'桀骜危险，不好驯服，野性十足',tag:'疯批受'},
+      {k:'k',t:'颜值高能力强，身世遭遇很苦，美强惨',tag:'美强惨受'},
+      {k:'l',t:'心思单纯迟钝，经常无意识撩攻',tag:'天然受'},
+      {k:'m',t:'容易委屈怕疼，需要细心呵护',tag:'娇气受'},
+      {k:'n',t:'嘴巴犀利毒舌，爱吐槽，刀子嘴豆腐心',tag:'毒舌受'}
+    ]},
+    { title:'吵架的时候，你最爱看的画面？', opts:[
+      {k:'A',t:'强攻冷静控场，稳住局面，事后笨拙又认真地哄人'},
+      {k:'B',t:'美人攻眼尾泛红垂眸，安静委屈，氛围感直接杀我'},
+      {k:'C',t:'年下小狗攻慌慌张张，蹭着受撒娇认错，尾巴快摇断'},
+      {k:'D',t:'矮攻气鼓鼓叉腰，嘴硬不肯认输，却偷偷递小零食示好'},
+      {k:'E',t:'温柔攻放缓语气，好好沟通，慢慢安抚受的情绪'},
+      {k:'F',t:'忠犬攻默默跟在身后，安安静静等受消气，绝不顶嘴反驳'},
+      {k:'G',t:'疯批攻情绪翻涌，偏执地不肯接受受要离开自己'},
+      {k:'H',t:'病娇攻红着眼眶发抖，满心都是害怕被抛弃的不安'},
+      {k:'I',t:'腹黑攻不动声色，循序渐进，一点点哄好受的心'},
+      {k:'J',t:'骚攻耍宝撩拨，三两句玩笑，就让受气不起来'},
+      {k:'K',t:'高岭之花攻难得失态，冰冷的脸上藏着慌乱无措'},
+      {k:'L',t:'渣攻看着受失望转身离开，后知后觉心慌（火葬场预备）'},
+      {k:'M',t:'病弱攻身体不适，难受得没有力气继续争执'},
+      {k:'N',t:'钓系攻淡淡示弱，松弛地勾起心疼，让受不忍心生气'},
+      {k:'O',t:'傲娇攻别扭转头，别扭装不在意，余光却一直偷偷瞟受'}
+    ]},
+    { title:'体型差你最吃哪款？', opts:[
+      {k:'A',t:'巨大体型差，攻高大宽厚，满满的安全感'},
+      {k:'B',t:'身高相近，势均力敌，并肩而立',tag:'强强感'},
+      {k:'C',t:'攻比受矮，小个子攻仰头对视，踮脚吻反差感拉满',tag:'矮攻狂喜'},
+      {k:'D',t:'受更高，攻偏小，受低头温柔照顾攻',tag:'受宠攻'},
+      {k:'E',t:'无所谓身高，氛围感优先，身高不影响磕'}
+    ]},
+    { title:'你最想看的经典互动名场面？', opts:[
+      {k:'A',t:'强攻圈住人，占有感满满的压迫壁咚'},
+      {k:'B',t:'美人攻抬眼落泪，破碎美貌氛围感暴击'},
+      {k:'C',t:'年下小狗埋进受怀里蹭蹭撒娇，轻声诉说喜欢'},
+      {k:'D',t:'矮攻踮起脚尖，努力仰头去吻受，倔强又可爱'},
+      {k:'E',t:'温柔攻轻轻顺着受的头发，低声耐心安慰'},
+      {k:'F',t:'忠犬攻默默挡在受身前，隔绝所有麻烦和恶意'},
+      {k:'G',t:'疯批攻攥紧受手腕，带着疯狂的执念不肯放手'},
+      {k:'H',t:'病娇攻紧紧抱住受，一遍一遍确认对方不会走'},
+      {k:'I',t:'腹黑攻看似无意，步步为营，把受慢慢圈进自己的世界'},
+      {k:'J',t:'骚攻凑近耳边，低声说撩人的情话'},
+      {k:'K',t:'清冷攻难得主动触碰，动作生疏，手足无措'},
+      {k:'L',t:'渣攻放下身段道歉，卑微挽回，追妻火葬场名场面'},
+      {k:'M',t:'病弱攻靠着受，虚弱地依赖在对方身上'},
+      {k:'N',t:'钓系攻一个漫不经心的眼神，就让受心神动摇'},
+      {k:'O',t:'傲娇攻别扭地递出准备好的礼物，嘴硬说不是特意买的'}
+    ]},
+    { title:'感情节奏你偏爱？', opts:[
+      {k:'A',t:'攻掌握节奏，主动强势推进关系'},
+      {k:'B',t:'拉扯感！两个人反复试探、暧昧纠缠'},
+      {k:'C',t:'年下直球小狗，热烈直白，毫不掩饰地表达喜欢'},
+      {k:'D',t:'天天拌嘴打闹，欢喜冤家吵吵闹闹生出爱意',tag:'欢喜冤家'},
+      {k:'E',t:'细水长流平淡陪伴，互相体贴慢慢相爱',tag:'互宠'},
+      {k:'F',t:'一开始互相提防戒备，后来彼此救赎',tag:'救赎向'},
+      {k:'G',t:'曾经分开走散，久别重逢再续前缘',tag:'破镜重圆'},
+      {k:'H',t:'从小一起长大，长久陪伴日久生情',tag:'竹马'},
+      {k:'I',t:'半路相遇，一见钟情，强势闯入彼此人生',tag:'天降'},
+      {k:'J',t:'没有固定攻受，两个人地位平等，可以互攻',tag:'互攻'},
+      {k:'K',t:'强势禁锢，浓烈又拉扯的占有羁绊',tag:'强制爱'},
+      {k:'L',t:'把对方当成心上人的影子，带着遗憾执念',tag:'替身文学'}
+    ]},
+    { title:'受被别人为难时，攻会怎么做最戳你？', opts:[
+      {k:'A',t:'气场全开，强势利落摆平一切',tag:'强攻'},
+      {k:'B',t:'淡淡几句话，不动声色，美貌自带威慑',tag:'美人攻'},
+      {k:'C',t:'着急挡在前面，年纪不大却拼尽全力护着',tag:'年下攻'},
+      {k:'D',t:'个子不大气势拉满，叉腰上前怼回去',tag:'矮攻'},
+      {k:'E',t:'温和但是坚定，有理有据护住受',tag:'温柔攻'},
+      {k:'F',t:'二话不说站在受这边，无条件偏向支持',tag:'忠犬攻'},
+      {k:'G',t:'眼神骤然变冷，谁敢为难受他都不会放过',tag:'疯批攻'},
+      {k:'H',t:'紧张不安，害怕受受伤，用力把人护在怀里',tag:'病娇攻'},
+      {k:'I',t:'不动声色暗中布局，悄悄收拾找麻烦的人',tag:'腹黑攻'},
+      {k:'J',t:'一边调侃一边帮受解围，轻松化解困境',tag:'骚攻'},
+      {k:'K',t:'打破一贯冷淡外壳，亲自出面为受撑腰',tag:'高岭之花攻'},
+      {k:'L',t:'一开始不在意，等到失去之后才拼命弥补',tag:'渣攻'},
+      {k:'M',t:'哪怕身体难受虚弱，也要坚持站在受身边',tag:'病弱攻'},
+      {k:'N',t:'巧妙引导，从容化解风波',tag:'钓系攻'},
+      {k:'O',t:'嘴上吐槽受惹麻烦，行动上已经出手帮忙',tag:'傲娇攻'}
+    ]},
+    { title:'攻哭了，你的反应？', opts:[
+      {k:'A',t:'不太吃攻落泪，更喜欢攻强大冷静的样子'},
+      {k:'B',t:'美人攻落泪，破碎感直接戳中我！'},
+      {k:'C',t:'年下小狗红眼眶委屈，心软到融化'},
+      {k:'D',t:'矮攻咬紧牙关憋住眼泪，倔强不肯掉，狠狠戳我'},
+      {k:'E',t:'温柔攻安静掉泪，看着就让人满心心疼'},
+      {k:'F',t:'忠犬攻委屈落泪，害怕自己会被受嫌弃'},
+      {k:'G',t:'疯批攻失控落泪，疯狂外壳下露出脆弱一面'},
+      {k:'H',t:'病娇攻掉眼泪，满心恐惧受会离开他'},
+      {k:'I',t:'腹黑攻很少哭，一旦落泪就是彻底卸下伪装真心破防'},
+      {k:'J',t:'骚攻收起平时玩世不恭的样子，红着眼认真表白'},
+      {k:'K',t:'清冷攻掉眼泪，冰山碎裂的反差冲击力超大'},
+      {k:'L',t:'渣攻后悔痛哭，火葬场高光时刻'},
+      {k:'M',t:'病弱攻虚弱落泪，脆弱感惹人怜惜'},
+      {k:'N',t:'钓系攻垂眼示弱落泪，轻轻松松勾得人心软'},
+      {k:'O',t:'傲娇攻偷偷掉眼泪，不想被任何人看见'}
+    ]},
+    { title:'下面哪一对人设组合是你的本命？', opts:[
+      {k:'A',t:'强攻×软受'},
+      {k:'B',t:'美人攻×强受'},
+      {k:'C',t:'年下小狗攻×成熟年上受'},
+      {k:'D',t:'矮攻×美人受'},
+      {k:'E',t:'温柔弱攻×桀骜受'},
+      {k:'F',t:'忠犬攻×女王受'},
+      {k:'G',t:'疯批攻×疯批受',tag:'强强'},
+      {k:'H',t:'病娇攻×诱受'},
+      {k:'I',t:'腹黑攻×天然受'},
+      {k:'J',t:'骚攻×毒舌受'},
+      {k:'K',t:'高岭之花攻×小太阳受'},
+      {k:'L',t:'渣攻×美强惨受（火葬场）'},
+      {k:'M',t:'病弱攻×强壮护短受',tag:'受宠攻'},
+      {k:'N',t:'钓系攻×傲娇受'},
+      {k:'O',t:'傲娇攻×傲娇受'}
+    ]},
+    { title:'你更吃哪一种年龄搭配？', opts:[
+      {k:'A',t:'年下攻 × 年上受（弟弟攻）'},
+      {k:'B',t:'年上攻 × 年下受（哥哥攻）'},
+      {k:'C',t:'同龄，年纪差不多，并肩同行',tag:'强强/互攻'},
+      {k:'D',t:'不看年龄，人设优先，年龄无所谓'}
+    ]},
+    { title:'感情里你最想看到的核心是？', opts:[
+      {k:'①',t:'强强！两个人都很强，势均力敌',dot:false},
+      {k:'②',t:'互攻！没有固定攻受，双向可上下',dot:false},
+      {k:'③',t:'追妻火葬场，虐攻流，前期渣后期追',dot:false},
+      {k:'④',t:'受宠攻！受主动照顾、偏爱攻',dot:false},
+      {k:'⑤',t:'互宠！双向心疼，互相照顾',dot:false},
+      {k:'⑥',t:'欢喜冤家，吵吵闹闹相爱',dot:false},
+      {k:'⑦',t:'救赎向，互相治愈，拉对方出深渊',dot:false},
+      {k:'⑧',t:'破镜重圆，分开之后再度相爱',dot:false},
+      {k:'⑨',t:'竹马，长久陪伴型',dot:false},
+      {k:'⑩',t:'天降，突如其来的心动',dot:false},
+      {k:'⑪',t:'强制爱，带着占有感的拉扯羁绊',dot:false},
+      {k:'⑫',t:'替身文学，藏着执念与遗憾',dot:false}
+    ]},
+    { title:'结局偏好？', opts:[
+      {k:'A',t:'甜到底，全程无大虐，安稳幸福',tag:'互宠'},
+      {k:'B',t:'中间有虐点，但是结局圆满HE'},
+      {k:'C',t:'可以接受带遗憾的BE，喜欢悲剧美学'},
+      {k:'D',t:'先虐后甜，火葬场洗白圆满收尾'},
+      {k:'E',t:'不看结局，人设写得好就行'}
+    ]}
+  ];
+
+  /* ===== 标签名称 ===== */
+  var GONG_NAMES={
+    A:'强攻',B:'美人攻',C:'年下小狗攻',D:'矮攻',E:'温柔弱攻',F:'忠犬攻',
+    G:'疯批攻',H:'病娇攻',I:'腹黑白切黑攻',J:'骚攻',K:'高岭之花清冷攻',
+    L:'渣攻',M:'病弱攻',N:'钓系攻',O:'傲娇攻'
+  };
+  var SHOU_NAMES={
+    a:'美人受',b:'清冷受',c:'奶受',d:'强受',e:'年上受',f:'女王受',
+    g:'诱受',h:'傲娇受',i:'腹黑受',j:'疯批受',k:'美强惨受',
+    l:'天然受',m:'娇气受',n:'毒舌受'
+  };
+  var PLOT_NAMES={
+    '①':'强强','②':'互攻','③':'追妻火葬场','④':'受宠攻','⑤':'互宠','⑥':'欢喜冤家',
+    '⑦':'救赎向','⑧':'破镜重圆','⑨':'竹马','⑩':'天降','⑪':'强制爱','⑫':'替身文学'
+  };
+
+  /* ===== 攻结果文案库 ===== */
+  var GONG_TEXT={
+    A:'你的本命是强攻！你最吃自带压迫感、力量感爆棚的攻。他成熟可靠，有担当有主见，占有欲直白又热烈，有能力把受护在羽翼之下。你很吃他对外冷硬强势，唯独对自己喜欢的人藏着独一份的偏爱，强势不是蛮横，是“我来扛下所有麻烦，你只管安心靠向我”。\n适配搭配：强攻×奶受、强攻×清冷受、强攻×诱受；很适合搭配强强、欢喜冤家、强制爱剧情。',
+    B:'本命美人攻！比起力量上的强势，你最先沦陷在颜值气质里。美人攻容貌惊艳，骨相优越，自带氛围感，可冷可柔可破碎。最戳你的反差是：他不只是好看的花瓶，本身实力强大、脑子清醒，美貌是他的加分项，不是全部。美人攻落泪、垂眸示弱这种破碎瞬间，对你杀伤力最大。\n适配搭配：美人攻×强受、美人攻×女王受；适配强强、救赎、破镜重圆。',
+    C:'本命年下小狗攻！热烈直白的弟弟攻狠狠拿捏你。外表看着乖巧软萌像小奶狗，内心的爱意和占有欲一点都不少，不擅长藏心思，喜欢就会主动黏上去蹭、撒娇、直白表白。他会带着少年人的莽撞和真诚，努力追上成熟的受，想要被前辈偏爱、也拼尽全力保护前辈。年下直球永远戳你！\n适配搭配：年下小狗攻×年上受；适配互宠、天降、欢喜冤家。',
+    D:'本命矮攻！你是反差感重度爱好者！完全不执着攻一定要高大魁梧。小个子的他自尊心强、脾气倔，看着小小的，护短的时候气场一米八。踮脚仰头吻受、抬头对视、受低头摸他头顶这些体型反差画面，是你的XP开关。矮攻不服输、不肯因为身高示弱的样子格外戳你。\n适配搭配：矮攻×美人受、矮攻×高个清冷受；适配欢喜冤家、互宠。',
+    E:'本命温柔弱攻！你不太喜欢有压迫感的攻，偏爱情绪稳定、包容柔软的类型。他温和耐心，善于共情，不会强迫受，擅长好好沟通。他的强大不在气势，而在情绪内核稳定，能接住受所有的暴躁、委屈和尖锐，慢慢治愈对方。温柔是他的铠甲，不是软弱。\n适配搭配：温柔弱攻×桀骜受、温柔弱攻×毒舌受；适配救赎、互宠、竹马。',
+    F:'本命忠犬攻！忠诚度是你最看重的点。他对外人疏离冷淡，边界感极强，全世界只偏向受一个人。他不善花哨的情话，爱意都藏在行动里，默默守护、随叫随到，受需要的时候永远第一个出现。他把受当成自己的全部信仰，愿意无条件迁就、支持。\n适配搭配：忠犬攻×女王受、忠犬攻×清冷受；适配互宠、救赎、竹马。',
+    G:'本命疯批攻！你偏爱浓烈到极致、危险又迷人的爱意。他的爱脱离常规，偏执又炽热，爱恨分明，没有折中选项。他可以为了受对抗全世界，骨子里带着野性疯狂。你很吃疯批和疯批强强对峙拉扯，两个人互相牵制、彼此是唯一能驯服对方的人。疯批的温柔只给心上人，这种专属感上头！\n适配搭配：疯批攻×疯批受、疯批攻×诱受；适配强强、强制爱、救赎。',
+    H:'本命病娇攻！你很吃带着不安感的偏执爱意。他极度缺乏安全感，爱意和恐惧捆绑在一起，害怕被抛弃，占有欲浓重，会吃醋、会胡思乱想，把受当成自己独有的珍宝。这份爱甜，同时带着紧绷的拉扯感，他所有极端的举动，根源都是害怕失去。\n适配搭配：病娇攻×诱受、病娇攻×美人受；适配强制爱、替身文学。',
+    I:'本命腹黑白切黑攻！你超爱反差套路感！表面温和无害、和善好说话，内心心思缜密，步步为营，早就悄悄规划好和受的未来。他不会粗暴抢夺，擅长攻心，一点点瓦解受的防备，看着是受主动沦陷，其实早就落入他的圈套。很少表露真心，动心之后格外专一。\n适配搭配：腹黑攻×天然受、腹黑攻×傲娇受；适配拉扯暧昧、破镜重圆。',
+    J:'本命骚攻！嘴甜会撩、风趣鲜活的攻最对你胃口。他很会说情话，爱逗受，总喜欢看受被撩得耳尖发红的样子，看着吊儿郎当不正经，底线很清晰，专一起来超级靠谱。他擅长调节气氛，吵架也能用玩笑缓和，热烈又鲜活，爱意直白有趣不沉闷。\n适配搭配：骚攻×毒舌受、骚攻×傲娇受；适配欢喜冤家、天降。',
+    K:'本命高岭之花攻！你痴迷冰山只为一人破例的设定。他万人追捧，常年疏离冷淡，不食人间烟火，对所有人保持距离。唯独遇见受之后，慢慢卸下冰冷外壳，慌乱、心动、笨拙地学着爱人。别人都得不到的特殊对待，受独有，这种专属破例感狠狠戳你！\n适配搭配：高岭之花攻×小太阳受、高岭之花攻×美人受；适配救赎、天降、强强。',
+    L:'本命渣攻（火葬场爱好者）！你很吃追妻火葬场的剧情美学。前期他懵懂自负，不懂珍惜，肆意伤害推开自己最珍贵的人；等到彻底失去之后，才幡然醒悟，尝尽无边后悔，放下所有身段卑微挽回。你重点磕的是后期虐攻、追悔莫及、用尽一切弥补的过程，主打虐攻流！\n适配搭配：渣攻×美强惨受；适配追妻火葬场、破镜重圆、替身文学。',
+    M:'本命病弱攻！美强惨攻爱好者报到！他身体孱弱单薄，容易病痛，看着易碎，但是头脑聪慧、内心坚韧有主见，一点都不软弱。他没办法用力量保护爱人，但是心思通透，总能给受精神支撑。你很吃受小心翼翼照顾他、偏爱他的模式，是受宠攻热门人选！\n适配搭配：病弱攻×强壮护短受；适配受宠攻、救赎、竹马。',
+    N:'本命钓系攻！氛围感天花板！他从不主动出击，松弛从容，不经意间释放魅力，一个眼神、小动作就勾得受心神荡漾，主动靠近、沦陷。他游刃有余，掌控暧昧节奏，不刻意撩，但是处处都是钩子，拉扯感一绝！\n适配搭配：钓系攻×傲娇受、钓系攻×清冷受；适配暧昧拉扯、强强。',
+    O:'本命傲娇攻！别扭爱好者狂喜！典型嘴硬心软，心里在意得不行，嘴上一定要装无所谓、嫌弃别扭。不会直白说喜欢，爱意全部藏在细节小动作里：偷偷准备礼物、默默帮忙、受出事第一个紧张。等着受慢慢看穿他别扭外壳下的真心，这种慢慢挖掘的糖超甜！\n适配搭配：傲娇攻×傲娇受、傲娇攻×毒舌受；适配欢喜冤家、互宠。'
+  };
+
+  /* ===== 受结果文案库 ===== */
+  var SHOU_TEXT={
+    a:'颜值氛围感优先！美人受长相精致惊艳，一出场自带滤镜，可以清冷、可以柔弱、也可以又美又狠。你很吃好看的人不管是什么性格都很有魅力，美人受搭配不同攻能碰撞完全不一样的火花：美人受×矮攻反差可爱，美人受×疯批攻张力拉满。',
+    b:'清冷受外冷内热，习惯和人保持距离，情绪很少外露，看着疏离不好接近。他不会轻易动心，一旦动心就会卸下所有防备，只在攻面前展露柔软脆弱。这种“所有人都觉得他冷淡，只有你见过他温柔一面”的专属感，特别戳你。',
+    c:'软乎乎乖乖奶受！温顺害羞，容易脸红，性格软，不擅长吵架，被欺负会委屈巴巴。他不是没有主见，只是性子柔软。很适合被攻好好偏爱保护，甜甜的日常向，强攻、忠犬攻搭配奶受是你的舒适区！',
+    d:'强受是你的本命！他强大独立，有主见有韧性，不服输，不靠别人庇护，自己就能独当一面。强强是你的舒适区，不需要依附攻，两个人并肩同行，势均力敌，拉扯博弈，谁也不会压垮谁。美人攻、疯批攻配强受很对你胃口！',
+    e:'成熟稳重年上受！阅历丰富，包容体贴，情绪稳定，会照顾人，自带温柔可靠的前辈气质。他能包容年下攻的莽撞幼稚，引导弟弟成长，同时也会被小狗热烈直白的爱意打动。年下小狗攻×年上受这个组合是你的心头好！',
+    f:'女王受气场强大从容，掌握感情里的主动权，自信耀眼，游刃有余。他不需要讨好任何人，攻心甘情愿臣服于他，尊重他、追随他。偏爱忠犬攻，一个高高在上，一个忠心追随，这种掌控感的拉扯感非常上头！',
+    g:'诱受自带撩人天赋，很多时候甚至是无意识撩人。眉眼灵动，一举一动都很勾人，自己浑然不觉，却能轻易搅乱攻的心绪。他可以天真也可以明艳，很适合搭配病娇攻、疯批攻，拉扯张力直接拉满！',
+    h:'别扭炸毛傲娇受！嘴硬心软，很容易炸毛反驳，嘴上嫌弃，心里很容易动容。害羞的时候会逞强装不在意，需要攻耐心哄、慢慢哄。傲娇攻×傲娇受双向别扭，欢喜冤家吵吵闹闹，是你很爱的类型！',
+    i:'腹黑白切黑受！外表温和乖巧，心思藏得很深，不动声色就能拿捏攻。看着温顺无害，心里算盘清楚，擅长攻心，悄悄把攻拿捏住，反差感很妙，经常能反向掌控节奏。',
+    j:'疯批受野性桀骜，危险迷人，很难驯服，骨子里带着野性。不喜欢被束缚，和疯批攻强强对峙，两个人同样偏执强悍，互相征服、彼此牵制，危险又致命的吸引力，强强拉扯爱好者狂喜！',
+    k:'美强惨受天花板！颜值高、能力强，但是过往满身伤痕，命运坎坷。他明明很强，却受过很多苦，坚韧地扛下一切。你一边被他的强大吸引，一边心疼他的遭遇，很吃有人把他从苦难里拉出来的救赎剧情，渣攻火葬场标配受！',
+    l:'天然受心思单纯迟钝，共情力干净通透，经常无意识撩攻，自己完全没察觉。懵懵懂懂的样子自带萌感，很容易把腹黑攻钓得死死的，懵懂和腹黑的反差，甜感十足！',
+    m:'娇气受容易委屈、怕疼，感知细腻，需要被细心呵护。不是矫情，是情绪直白，委屈会红眼眶，开心会明显表现出来。适合温柔攻、忠犬攻细心呵护，甜宠氛围感拉满！',
+    n:'毒舌受刀子嘴豆腐心！嘴上吐槽不停，句句犀利，但是内心柔软善良。嘴上不饶人，别人真出事他第一个帮忙。和骚攻、傲娇攻搭配互怼日常，欢喜冤家效果绝佳！'
+  };
+
+  /* ===== 剧情结果文案库 ===== */
+  var PLOT_TEXT={
+    '①':'势均力敌是你的TOP！两个人实力、心智对等，没有谁依附谁，彼此是对手也是爱人。拉扯博弈，互相试探，谁都不会完全退让，张力满满。强强可以是温柔相爱，也可以是疯批对峙，重点是平等强大！',
+    '②':'你热爱平等无固定攻受！不被攻受标签束缚，爱意不分上下，两个人可以自由切换，跟着情绪、氛围走，相爱优先，标签其次，自由磕糖，拒绝死板固定人设！',
+    '③':'虐攻流爱好者！前期错过伤害，后期无尽悔恨，渣攻放下所有尊严去弥补、去挽回。重点看攻承受失去的痛苦、自我反省、拼命付出的过程，结局HE或者带遗憾都可以，核心是虐攻！',
+    '④':'反转款！常规模式反过来，受是更成熟强大的一方，主动照顾、偏爱、包容攻。攻可以是病弱、小狗、傲娇，被受好好捧在手心里疼，这种反向宠爱新鲜感拉满！',
+    '⑤':'双向奔赴天花板！没有单方面一直付出，两个人互相心疼、互相照顾，你体谅我的难处，我包容你的缺点。细水长流，甜而不腻，稳定温暖，是你的舒适区！',
+    '⑥':'吵出来的爱情！两个人一见面就拌嘴互怼，看对方不顺眼，打打闹闹，在一次次交锋里慢慢动心。嘴上互损，心里慢慢在意，轻松有趣，不沉重！',
+    '⑦':'你很吃彼此是对方的光！两个人都带着伤痕，遇见之后互相治愈，把对方从黑暗里拉出来。爱意是治愈伤口的良药，温柔又厚重，宿命感很强。',
+    '⑧':'兜兜转转还是你！曾经因为误会、伤害分开，各自沉淀成长，久别重逢。隔阂还在，爱意也还在，一边解开过往心结，一边重新爱上，自带遗憾和宿命感。',
+    '⑨':'长久陪伴型！从小一起长大，熟悉彼此所有样子，感情慢慢发酵，日久生情。没有突如其来的轰轰烈烈，是细水长流，知根知底，安稳踏实。',
+    '⑩':'一眼沦陷！突如其来的心动，闯入原本平静的生活，热烈、冲击力强。萍水相逢，却一眼认定，浪漫又有宿命感！',
+    '⑪':'浓烈的占有羁绊！带着强迫、禁锢的拉扯感，爱意裹挟着偏执，张力拉满。重点是强烈的宿命拉扯，爱恨交织，氛围感浓厚！',
+    '⑫':'执念与遗憾美学！他把眼前人当成白月光的影子，前期是虚假的投射，后期分不清是执念还是真心。虐感很重，带着遗憾、纠结，氛围感很绝！'
+  };
+
+  /* ===== 状态 ===== */
+  var picked={};          // 勾选数据（本地 js 变量，按勾选先后顺序保存，切题不丢失）
+  var cur=0;              // 当前题号（0-11）
+
+  var viewQuiz=document.getElementById('view-quiz');
+  var qCard=document.getElementById('qCard');
+  var progressText=document.getElementById('progressText');
+  var progressFill=document.getElementById('progressFill');
+  var prevBtn=document.getElementById('prevBtn');
+  var nextBtn=document.getElementById('nextBtn');
+  var resultCards=document.getElementById('resultCards');
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ===== 视图切换（淡入淡出，一次只显示一个） ===== */
+  function showView(id){
+    var views=document.querySelectorAll('.view');
+    for(var i=0;i<views.length;i++) views[i].classList.remove('active');
+    var v=document.getElementById(id);
+    v.classList.add('active');
+    v.scrollTop=0;
+  }
+
+  /* ===== 渲染当前题目 ===== */
+  function renderQuestion(){
+    if(!picked[cur]) picked[cur]=[];
+    var q=QUESTIONS[cur];
+    var html='';
+    for(var i=0;i<q.opts.length;i++){
+      var o=q.opts[i];
+      var tag=o.tag?'<span class="tag-hint">【'+esc(o.tag)+'】</span>':'';
+      var dot=(o.dot===false)?'':'.';
+      var checked=(picked[cur].indexOf(o.k)>-1)?' checked':'';
+      html+='<label class="opt"><input type="checkbox" data-k="'+esc(o.k)+'"'+checked+'><span class="box" aria-hidden="true"></span><span class="opt-text"><span class="opt-letter">'+esc(o.k)+dot+'</span>'+esc(o.t)+tag+'</span></label>';
+    }
+    qCard.innerHTML='<div class="q-body"><h2 class="q-title">'+(cur+1)+'. '+esc(q.title)+'</h2><div class="q-options">'+html+'</div></div>';
+
+    progressText.textContent='当前第 '+(cur+1)+' / 12 题';
+    progressFill.style.width=Math.round((cur+1)/12*100)+'%';
+    prevBtn.style.visibility=(cur===0)?'hidden':'visible';
+    nextBtn.textContent=(cur===11)?'提交查看结果':'下一题';
+  }
+
+  /* ===== 勾选事件（事件委托，保存勾选顺序） ===== */
+  qCard.addEventListener('change',function(e){
+    if(!e.target.matches('input[type="checkbox"]')) return;
+    var k=e.target.getAttribute('data-k');
+    if(!picked[cur]) picked[cur]=[];
+    var arr=picked[cur];
+    var idx=arr.indexOf(k);
+    if(e.target.checked){
+      if(idx===-1) arr.push(k);          // 记录勾选先后顺序
+    }else{
+      if(idx>-1) arr.splice(idx,1);
+    }
+  });
+
+  /* ===== 结果卡片 ===== */
+  function resCard(badge,mainKey,nameMap,textMap,subList,subLabel,emptyText){
+    var html='<div class="res-card"><span class="res-badge">'+esc(badge)+'</span>';
+    if(mainKey){
+      html+='<div class="res-title">'+esc(nameMap[mainKey])+'</div><p class="res-copy">'+esc(textMap[mainKey])+'</p>';
+    }else{
+      html+='<div class="res-title">暂未解锁</div><p class="res-copy">'+esc(emptyText)+'</p>';
+    }
+    if(subList.length){
+      html+='<div class="sub-block"><div class="sub-label">'+esc(subLabel)+'</div><div class="chips">';
+      for(var i=0;i<subList.length;i++){
+        var k=subList[i];
+        html+='<span class="chip"><b>'+esc(k)+'</b>'+esc(nameMap[k])+'</span>';
+      }
+      html+='</div></div>';
+    }
+    return html+'</div>';
+  }
+
+  function renderResults(){
+    var g=picked[0]||[];
+    var s=picked[1]||[];
+    var p=picked[10]||[];
+
+    var html='';
+    html+=resCard('本命主攻',g[0],GONG_NAMES,GONG_TEXT,g.slice(1),'副磕攻','这轮没有勾选攻选项，本命主攻暂未解锁～');
+    html+=resCard('本命主受',s[0],SHOU_NAMES,SHOU_TEXT,s.slice(1),'副磕受','这轮没有勾选受选项，本命主受暂未解锁～');
+    html+=resCard('本命剧情',p[0],PLOT_NAMES,PLOT_TEXT,p.slice(1),'副剧情偏好','这轮没有勾选剧情选项，本命剧情暂未解锁～');
+    resultCards.innerHTML=html;
+  }
+
+  /* ===== 开始测试 ===== */
+  document.getElementById('startBtn').addEventListener('click',function(){
+    cur=0;
+    renderQuestion();
+    showView('view-quiz');
+  });
+
+  /* ===== 上一题 / 下一题 / 提交 ===== */
+  prevBtn.addEventListener('click',function(){
+    if(cur>0){ cur--; renderQuestion(); }
+  });
+  nextBtn.addEventListener('click',function(){
+    if(cur<11){ cur++; renderQuestion(); }
+    else{
+      showView('view-loading');
+      setTimeout(function(){
+        renderResults();
+        showView('view-result');
+      },2000);
+    }
+  });
+
+  /* ===== 重新测试 ===== */
+  document.getElementById('restartBtn').addEventListener('click',function(){
+    picked={};
+    cur=0;
+    showView('view-cover');
+  });
+})();
+</script>
+</body>
+</html>
